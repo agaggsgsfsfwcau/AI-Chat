@@ -22,12 +22,28 @@
             --on-error: #ffffff;
         }
         
+        [data-theme="dark"] {
+            --primary: #bb86fc;
+            --primary-dark: #3700b3;
+            --primary-light: #bb86fc;
+            --secondary: #03dac6;
+            --background: #121212;
+            --surface: #1e1e1e;
+            --error: #cf6679;
+            --on-primary: #000000;
+            --on-secondary: #000000;
+            --on-background: #ffffff;
+            --on-surface: #ffffff;
+            --on-error: #000000;
+        }
+        
         body {
             margin: 0;
             padding: 0;
             font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
+            background-color: var(--background);
             color: var(--on-background);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         
         .app-bar {
@@ -43,12 +59,36 @@
             padding: 0 16px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             z-index: 100;
+            transition: background-color 0.3s ease;
         }
         
         .app-bar__title {
             font-size: 1.25rem;
             font-weight: 500;
             margin-left: 16px;
+            flex-grow: 1;
+        }
+        
+        .app-bar__actions {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .icon-button {
+            background: none;
+            border: none;
+            color: var(--on-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        
+        .icon-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         .container {
@@ -58,6 +98,7 @@
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
             overflow: hidden;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
         
         .chat-container {
@@ -76,6 +117,7 @@
             line-height: 1.4;
             position: relative;
             animation: fadeIn 0.3s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         
         .user-message {
@@ -87,9 +129,10 @@
         
         .assistant-message {
             align-self: flex-start;
-            background-color: #e0e0e0;
+            background-color: var(--surface);
             color: var(--on-surface);
             border-bottom-left-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
         }
         
         .input-container {
@@ -102,6 +145,7 @@
             box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
+            transition: background-color 0.3s ease;
         }
         
         .input-field {
@@ -109,8 +153,21 @@
             margin-right: 16px;
         }
         
-        .mdc-text-field {
+        #chat-input {
             width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 24px;
+            outline: none;
+            font-size: 16px;
+            background-color: var(--surface);
+            color: var(--on-surface);
+            transition: all 0.3s ease;
+        }
+        
+        #chat-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(98, 0, 238, 0.2);
         }
         
         .send-button {
@@ -124,16 +181,23 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
         .send-button:hover {
             background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .send-button:active {
+            transform: translateY(0);
         }
         
         .send-button:disabled {
             background-color: #e0e0e0;
             cursor: not-allowed;
+            transform: none;
         }
         
         .material-icons {
@@ -171,19 +235,22 @@
         .typing-indicator {
             display: flex;
             align-self: flex-start;
-            background-color: #e0e0e0;
+            background-color: var(--surface);
+            color: var(--on-surface);
             padding: 12px 16px;
             border-radius: 20px;
             margin-bottom: 12px;
             border-bottom-left-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
         }
         
         .typing-dot {
             width: 8px;
             height: 8px;
-            background-color: #666;
+            background-color: var(--on-surface);
             border-radius: 50%;
             margin: 0 2px;
+            opacity: 0.6;
             animation: bounce 1.4s infinite ease-in-out;
         }
         
@@ -207,12 +274,39 @@
                 transform: translateY(-5px);
             }
         }
+        
+        /* Message timestamp */
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 4px;
+            text-align: right;
+        }
+        
+        /* System message */
+        .system-message {
+            align-self: center;
+            background-color: transparent;
+            color: var(--on-background);
+            font-size: 0.875rem;
+            opacity: 0.7;
+            margin: 8px 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <header class="app-bar">
         <span class="material-icons">chat_bubble</span>
         <h1 class="app-bar__title">Chat Assistant</h1>
+        <div class="app-bar__actions">
+            <button id="theme-toggle" class="icon-button" title="Toggle dark mode">
+                <span class="material-icons" id="theme-icon">dark_mode</span>
+            </button>
+            <button class="icon-button" title="Settings">
+                <span class="material-icons">settings</span>
+            </button>
+        </div>
     </header>
     
     <div class="container">
@@ -223,9 +317,9 @@
     
     <div class="input-container">
         <div class="input-field">
-            <input id="chat-input" type="text" placeholder="Type a message" style="width: 100%; padding: 12px 16px; border: 1px solid #e0e0e0; border-radius: 24px; outline: none; font-size: 16px;">
+            <input id="chat-input" type="text" placeholder="Type a message">
         </div>
-        <button id="send-button" class="send-button">
+        <button id="send-button" class="send-button" title="Send message">
             <span class="material-icons">send</span>
         </button>
     </div>
@@ -234,6 +328,37 @@
         const chatContainer = document.getElementById('chat-container');
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        
+        // Check for saved theme preference or use preferred color scheme
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        let currentTheme = localStorage.getItem('theme') || 
+                          (prefersDarkScheme.matches ? 'dark' : 'light');
+        
+        // Apply theme
+        function applyTheme() {
+            document.body.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            
+            // Update icon
+            if (currentTheme === 'dark') {
+                themeIcon.textContent = 'light_mode';
+                themeIcon.title = 'Switch to light mode';
+            } else {
+                themeIcon.textContent = 'dark_mode';
+                themeIcon.title = 'Switch to dark mode';
+            }
+        }
+        
+        // Toggle theme
+        themeToggle.addEventListener('click', () => {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme();
+        });
+        
+        // Initialize theme
+        applyTheme();
         
         // Focus input on load
         chatInput.focus();
@@ -260,10 +385,34 @@
             }
         }
         
+        // Get current time in HH:MM format
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
         // Add message to chat
         function addMessage(text, isUser) {
             const messageElem = document.createElement('div');
             messageElem.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.textContent = text;
+            messageElem.appendChild(messageContent);
+            
+            const timeElem = document.createElement('div');
+            timeElem.className = 'message-time';
+            timeElem.textContent = getCurrentTime();
+            messageElem.appendChild(timeElem);
+            
+            chatContainer.appendChild(messageElem);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Add system message (for theme changes, etc)
+        function addSystemMessage(text) {
+            const messageElem = document.createElement('div');
+            messageElem.className = 'system-message';
             messageElem.textContent = text;
             chatContainer.appendChild(messageElem);
             chatContainer.scrollTop = chatContainer.scrollHeight;

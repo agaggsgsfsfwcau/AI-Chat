@@ -5,7 +5,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Assistant</title>
+    <title>AI Chat Assistant</title>
     <style>
         :root {
             --primary: #6200ee;
@@ -303,9 +303,6 @@
             <button id="theme-toggle" class="icon-button" title="Toggle dark mode">
                 <span class="material-icons" id="theme-icon">dark_mode</span>
             </button>
-            <button class="icon-button" title="Settings">
-                <span class="material-icons">settings</span>
-            </button>
         </div>
     </header>
     
@@ -428,7 +425,7 @@
             }
         });
         
-        // Send message function
+        // Send message to Gemini API
         async function sendMessage() {
             const message = chatInput.value.trim();
             if (!message) return;
@@ -440,22 +437,24 @@
             // Show typing indicator
             showTypingIndicator();
             
-            // Determine API endpoint
-            const apiUrl = message.startsWith('/image') ? 
-                'https://backend.buildpicoapps.com/aero/run/image-generation-api?pk=v1-Z0FBQUFBQm5HUEtMSjJkakVjcF9IQ0M0VFhRQ0FmSnNDSHNYTlJSblE0UXo1Q3RBcjFPcl9YYy1OZUhteDZWekxHdWRLM1M1alNZTkJMWEhNOWd4S1NPSDBTWC12M0U2UGc9PQ==' : 
-                'https://backend.buildpicoapps.com/aero/run/llm-api?pk=v1-Z0FBQUFBQm5HUEtMSjJkakVjcF9IQ0M0VFhRQ0FmSnNDSHNYTlJSblE0UXo1Q3RBcjFPcl9YYy1OZUhteDZWekxHdWRLM1M1alNZTkJMWEhNOWd4S1NPSDBTWC12M0U2UGc9PQ==';
-            
             try {
                 // Disable send button while waiting
                 sendButton.disabled = true;
                 
-                const response = await fetch(apiUrl, {
+                const API_KEY = 'AIzaSyBvrJsrM20cdSsoE4Gmg0CWh30YA-dNiCk';
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+                
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        prompt: message
+                        contents: [{
+                            parts: [{
+                                text: message
+                            }]
+                        }]
                     })
                 });
                 
@@ -464,10 +463,10 @@
                 // Hide typing indicator
                 hideTypingIndicator();
                 
-                if (data.status === 'success') {
-                    addMessage(data.text, false);
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    addMessage(data.candidates[0].content.parts[0].text, false);
                 } else {
-                    addMessage('Sorry, I encountered an error. Please try again.', false);
+                    addMessage('Sorry, I couldn\'t process your request. Please try again.', false);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -481,7 +480,7 @@
         
         // Initial greeting
         setTimeout(() => {
-            addMessage("Hello! How can I assist you today?", false);
+            addMessage("Hello! I'm your Gemini-powered assistant. How can I help you today?", false);
         }, 500);
     </script>
 </body>

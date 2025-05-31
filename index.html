@@ -26,9 +26,39 @@
             margin-bottom: 30px;
         }
         
+        .tabs-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .tab {
+            padding: 8px 15px;
+            background-color: #e0e0e0;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .tab.active {
+            background-color: white;
+            font-weight: bold;
+        }
+        
+        .add-tab {
+            padding: 8px 12px;
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
         .chat-container {
             background-color: white;
-            border-radius: 8px;
+            border-radius: 0 8px 8px 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
             margin-bottom: 20px;
@@ -41,6 +71,7 @@
             padding: 10px 15px;
             border-radius: 18px;
             max-width: 80%;
+            word-wrap: break-word;
         }
         
         .user-message {
@@ -90,11 +121,99 @@
             font-style: italic;
             margin: 10px 0;
         }
+        
+        .history-panel {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            width: 250px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 99;
+            display: none;
+        }
+        
+        .history-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        
+        .history-item:hover {
+            background-color: #f5f5f5;
+            border-left: 3px solid #4285F4;
+        }
+        
+        .toggle-history {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            background: #4285F4;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .api-key-container {
+            margin: 20px auto;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #api-key-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #save-api-key {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <button class="toggle-history" id="toggle-history">≡</button>
+    
+    <div class="history-panel" id="history-panel">
+        <h3>Conversation History</h3>
+        <div id="history-list"></div>
+    </div>
+    
     <div class="container">
         <h1>Gemini AI Chat</h1>
+        
+        <div class="api-key-container" id="api-key-container">
+            <h3>Enter Your Gemini API Key</h3>
+            <p>To use this chat interface, you need to provide your own Gemini API key.</p>
+            <input type="password" id="api-key-input" placeholder="Enter your Gemini API key...">
+            <button id="save-api-key">Save Key</button>
+            <p><small>Your key is stored locally in your browser and never sent to any server except Google's Gemini API.</small></p>
+        </div>
+        
+        <div class="tabs-container" id="tabs-container">
+            <!-- Tabs will be added here dynamically -->
+        </div>
         
         <div class="chat-container" id="chat-container">
             <!-- Messages will appear here -->
@@ -102,24 +221,161 @@
         </div>
         
         <div class="input-area">
-            <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off">
-            <button id="send-button">Send</button>
+            <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off" disabled>
+            <button id="send-button" disabled>Send</button>
         </div>
     </div>
 
     <script>
-        // Your Gemini API key
-        const API_KEY = "AIzaSyBvrJsrM20cdSsoE4Gmg0CWh30YA-dNiCk";
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
-        
         // DOM elements
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
         const typingIndicator = document.getElementById('typing-indicator');
+        const tabsContainer = document.getElementById('tabs-container');
+        const toggleHistoryBtn = document.getElementById('toggle-history');
+        const historyPanel = document.getElementById('history-panel');
+        const historyList = document.getElementById('history-list');
+        const apiKeyContainer = document.getElementById('api-key-container');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiKeyBtn = document.getElementById('save-api-key');
+        
+        // Chat state
+        let chats = {
+            'tab-1': {
+                id: 'tab-1',
+                title: 'New Chat',
+                messages: [
+                    { role: 'ai', content: "Hello! I'm Gemini. How can I assist you today?" }
+                ]
+            }
+        };
+        
+        let currentTabId = 'tab-1';
+        let chatHistory = [];
+        let apiKey = localStorage.getItem('gemini-api-key') || '';
+        
+        // Initialize the app
+        function init() {
+            checkApiKey();
+            
+            renderTabs();
+            renderMessages(currentTabId);
+            loadHistory();
+            updateHistoryList();
+            
+            // Event listeners
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            toggleHistoryBtn.addEventListener('click', toggleHistory);
+            saveApiKeyBtn.addEventListener('click', saveApiKey);
+        }
+        
+        function checkApiKey() {
+            if (apiKey) {
+                apiKeyContainer.style.display = 'none';
+                userInput.disabled = false;
+                sendButton.disabled = false;
+            } else {
+                apiKeyContainer.style.display = 'block';
+                userInput.disabled = true;
+                sendButton.disabled = true;
+            }
+        }
+        
+        function saveApiKey() {
+            apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                localStorage.setItem('gemini-api-key', apiKey);
+                apiKeyContainer.style.display = 'none';
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                apiKeyInput.value = '';
+            }
+        }
+        
+        // Toggle history panel
+        function toggleHistory() {
+            historyPanel.style.display = historyPanel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Add a new tab
+        function addTab() {
+            const tabId = 'tab-' + Date.now();
+            chats[tabId] = {
+                id: tabId,
+                title: 'New Chat',
+                messages: [
+                    { role: 'ai', content: "Hello! What would you like to discuss?" }
+                ]
+            };
+            currentTabId = tabId;
+            renderTabs();
+            renderMessages(tabId);
+            saveToHistory(tabId);
+        }
+        
+        // Switch tabs
+        function switchTab(tabId) {
+            currentTabId = tabId;
+            renderTabs();
+            renderMessages(tabId);
+        }
+        
+        // Render all tabs
+        function renderTabs() {
+            tabsContainer.innerHTML = '';
+            
+            Object.keys(chats).forEach(tabId => {
+                const tab = chats[tabId];
+                const tabElement = document.createElement('div');
+                tabElement.classList.add('tab');
+                if (tabId === currentTabId) {
+                    tabElement.classList.add('active');
+                }
+                tabElement.textContent = tab.title;
+                tabElement.addEventListener('click', () => switchTab(tabId));
+                tabsContainer.appendChild(tabElement);
+            });
+            
+            // Add "+" button
+            const addButton = document.createElement('button');
+            addButton.classList.add('add-tab');
+            addButton.textContent = '+';
+            addButton.addEventListener('click', addTab);
+            tabsContainer.appendChild(addButton);
+        }
+        
+        // Render messages for current tab
+        function renderMessages(tabId) {
+            chatContainer.innerHTML = '';
+            const messages = chats[tabId].messages;
+            
+            messages.forEach(msg => {
+                addMessage(msg.role, msg.content, false);
+            });
+            
+            chatContainer.appendChild(typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
         
         // Add a message to the chat
-        function addMessage(role, content) {
+        function addMessage(role, content, saveToState = true) {
+            if (saveToState) {
+                chats[currentTabId].messages.push({ role, content });
+                
+                // Update tab title if it's the first user message
+                if (role === 'user' && chats[currentTabId].messages.filter(m => m.role === 'user').length === 1) {
+                    chats[currentTabId].title = content.length > 20 ? content.substring(0, 20) + '...' : content;
+                    renderTabs();
+                }
+            }
+            
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message');
             messageDiv.classList.add(role === 'user' ? 'user-message' : 'ai-message');
@@ -142,19 +398,27 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
             
             try {
+                // Include conversation history in the request
+                const conversationHistory = chats[currentTabId].messages.map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: msg.content }]
+                }));
+                
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: message
-                            }]
-                        }]
+                        contents: conversationHistory
                     })
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
                 
                 const data = await response.json();
                 
@@ -164,8 +428,9 @@
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     const aiResponse = data.candidates[0].content.parts[0].text;
                     addMessage('ai', aiResponse);
+                    saveToHistory(currentTabId);
                 } else {
-                    addMessage('ai', "Sorry, I couldn't process your request. API response: " + JSON.stringify(data));
+                    addMessage('ai', "Sorry, I couldn't process your request. Please check your API key and try again.");
                 }
             } catch (error) {
                 // Hide typing indicator
@@ -176,18 +441,96 @@
             }
         }
         
-        // Event listeners
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        // Save conversation to history
+        function saveToHistory(tabId) {
+            const existingIndex = chatHistory.findIndex(item => item.id === tabId);
+            const chat = chats[tabId];
+            
+            if (existingIndex >= 0) {
+                chatHistory[existingIndex] = {
+                    id: tabId,
+                    title: chat.title,
+                    timestamp: new Date().toISOString(),
+                    preview: chat.messages.slice(-1)[0].content.substring(0, 50)
+                };
+            } else {
+                chatHistory.unshift({
+                    id: tabId,
+                    title: chat.title,
+                    timestamp: new Date().toISOString(),
+                    preview: chat.messages.slice(-1)[0].content.substring(0, 50)
+                });
             }
-        });
+            
+            // Save to localStorage
+            localStorage.setItem('gemini-chat-history', JSON.stringify(chatHistory));
+            localStorage.setItem(`gemini-chat-${tabId}`, JSON.stringify(chats[tabId].messages));
+            updateHistoryList();
+        }
         
-        // Initial greeting
-        window.onload = function() {
-            addMessage('ai', "Hello! I'm Gemini. How can I assist you today?");
-        };
+        // Load history from localStorage
+        function loadHistory() {
+            const savedHistory = localStorage.getItem('gemini-chat-history');
+            if (savedHistory) {
+                chatHistory = JSON.parse(savedHistory);
+            }
+        }
+        
+        // Update history list
+        function updateHistoryList() {
+            historyList.innerHTML = '';
+            
+            chatHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.classList.add('history-item');
+                
+                const title = document.createElement('div');
+                title.textContent = item.title;
+                title.style.fontWeight = 'bold';
+                
+                const preview = document.createElement('div');
+                preview.textContent = item.preview;
+                preview.style.color = '#666';
+                preview.style.fontSize = '0.9em';
+                
+                historyItem.appendChild(title);
+                historyItem.appendChild(preview);
+                
+                historyItem.addEventListener('click', () => {
+                    // Load the conversation if it doesn't exist
+                    if (!chats[item.id]) {
+                        const savedMessages = localStorage.getItem(`gemini-chat-${item.id}`);
+                        if (savedMessages) {
+                            chats[item.id] = {
+                                id: item.id,
+                                title: item.title,
+                                messages: JSON.parse(savedMessages)
+                            };
+                        } else {
+                            // Create new chat if no history found
+                            chats[item.id] = {
+                                id: item.id,
+                                title: item.title,
+                                messages: [
+                                    { role: 'ai', content: "Continuing our conversation..." }
+                                ]
+                            };
+                        }
+                    }
+                    
+                    // Switch to the tab
+                    currentTabId = item.id;
+                    renderTabs();
+                    renderMessages(item.id);
+                    historyPanel.style.display = 'none';
+                });
+                
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // Initialize the app
+        window.onload = init;
     </script>
 </body>
 </html>

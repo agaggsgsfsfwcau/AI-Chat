@@ -441,6 +441,8 @@
                 // Disable send button while waiting
                 sendButton.disabled = true;
                 
+                // IMPORTANT: Replace with your actual Gemini API key
+                // Note: Exposing API keys in client-side code is insecure for production
                 const API_KEY = 'AIzaSyBvrJsrM20cdSsoE4Gmg0CWh30YA-dNiCk';
                 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
                 
@@ -454,7 +456,19 @@
                             parts: [{
                                 text: message
                             }]
-                        }]
+                        }],
+                        safetySettings: [
+                            {
+                                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                                threshold: "BLOCK_ONLY_HIGH"
+                            }
+                        ],
+                        generationConfig: {
+                            temperature: 0.9,
+                            topP: 1,
+                            topK: 40,
+                            maxOutputTokens: 2048
+                        }
                     })
                 });
                 
@@ -466,22 +480,18 @@
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     addMessage(data.candidates[0].content.parts[0].text, false);
                 } else {
-                    addMessage('Sorry, I couldn\'t process your request. Please try again.', false);
+                    const errorMsg = data.error ? data.error.message : 'No response from the API';
+                    addMessage(`Sorry, I couldn't process your request. (${errorMsg})`, false);
                 }
             } catch (error) {
                 console.error('Error:', error);
                 hideTypingIndicator();
-                addMessage('Sorry, there was a problem connecting to the server.', false);
+                addMessage('Sorry, there was a problem connecting to the server. Please try again later.', false);
             } finally {
                 sendButton.disabled = false;
                 chatInput.focus();
             }
         }
-        
-        // Initial greeting
-        setTimeout(() => {
-            addMessage("Hello! I'm your Gemini-powered assistant. How can I help you today?", false);
-        }, 500);
     </script>
 </body>
 </html>

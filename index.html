@@ -110,7 +110,7 @@
     <script>
         // Your Gemini API key
         const API_KEY = "AIzaSyBvrJsrM20cdSsoE4Gmg0CWh30YA-dNiCk";
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${API_KEY}`;
         
         // DOM elements
         const chatContainer = document.getElementById('chat-container');
@@ -165,14 +165,13 @@
                     const aiResponse = data.candidates[0].content.parts[0].text;
                     addMessage('ai', aiResponse);
                 } else {
-                    addMessage('ai', "Sorry, I couldn't process your request. Please try again.");
-                    console.error('Unexpected API response:', data);
+                    addMessage('ai', "Sorry, I couldn't process your request. API response: " + JSON.stringify(data));
                 }
             } catch (error) {
                 // Hide typing indicator
                 typingIndicator.style.display = 'none';
                 
-                addMessage('ai', "An error occurred while processing your request.");
+                addMessage('ai', "An error occurred: " + error.message);
                 console.error('Error:', error);
             }
         }
